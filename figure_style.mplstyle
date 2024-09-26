@@ -1,0 +1,27 @@
+#Font
+font.size : 8
+font.family : Arial
+
+#Axes
+axes.titlesize : 8
+axes.linewidth : 1.
+axes.edgecolor : black
+
+#Ticks
+xtick.major.width : 1.
+ytick.major.width : 1.
+xtick.direction: in
+ytick.direction: in
+
+#Legend
+legend.framealpha : 0.
+legend.handlelength : 1.
+legend.fontsize : 7
+
+
+#Figure
+figure.dpi : 200
+
+#Savefig
+savefig.bbox : tight
+savefig.format : svg

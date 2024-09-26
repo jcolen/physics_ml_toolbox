@@ -7,14 +7,12 @@ Rest assured I'll do my best to add to this as I encounter more new and exciting
 ## Directory Organization
 ```
 ├── env.yaml                          : Conda setup file with package requirements
-├── setup.py                          : Python setup file with requirements files
 ├── README.md                         : Readme documentation
 ├── physics_ml_toolbox
     ├── fno                           : Fourier neural operators (and how to interpret them)
     ├── pinn                          : Physics-informed neural networks
     ├── pbnn                          : Physical bottleneck for PDE-constrained optimization
     ├── sindy                         : Sparse identification of nonlinear dynamical systems
-
 ```
 
 This toolbox is not meant to be a "universal import" and I don't expect it to be a plug-and-play solution for general problems.
@@ -24,5 +22,6 @@ I can minimize the amount of time I spend redoing solved problems or searching t
 
 Within each subfolder, I'll include an additional `README.md` with references to relevant papers. I'll also include any comments 
 and, if possible, support those comments with suitable examples.
+Each subfolder will also have its own python environment file. This is to minimize any headaches that may arise with resolving dependencies across multiple conflicting, old, or poorly maintained packages.
 
 Please direct any questions, comments, or complaints to `jcolen@odu.edu`

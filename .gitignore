@@ -1,0 +1,4 @@
+tb_logs
+*.swp
+__pycache__
+.ipynb_checkpoints
