@@ -23,6 +23,7 @@ class PINN(nn.Module):
                  num_params: int,
                  lr: float = 1e0,
                  act=Sin,
+                 optimizer_type='lbfgs',
                  log_dir: str = "./tb_logs"):
         super().__init__()
 
@@ -30,6 +31,7 @@ class PINN(nn.Module):
         self.layers = layers
         self.num_params = num_params
         self.lr = lr
+        self.optimizer_type = optimizer_type
         self.log_dir = log_dir
 
         self.parse_data(data)
@@ -60,54 +62,69 @@ class PINN(nn.Module):
 
     def init_optimizers(self):
         """ Initialize optimizers and learning rate scheduler """
-        self.optimizer_lbfgs = torch.optim.LBFGS(
-            self.model.parameters(),
-            lr=self.lr,
-            max_iter=50000,
-            max_eval=50000,
-            history_size=50,
-            tolerance_grad=1e-9,
-            tolerance_change=1.0 * np.finfo(float).eps,
-            line_search_fn="strong_wolfe",
-        )
-        self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer_lbfgs, gamma=0.95)
+        if self.optimizer_type == 'lbfgs':
+            self.optimizer = torch.optim.LBFGS(
+                self.model.parameters(),
+                lr=self.lr,
+                max_iter=50000,
+                max_eval=50000,
+                history_size=50,
+                tolerance_grad=1e-9,
+                tolerance_change=1.0 * np.finfo(float).eps,
+                line_search_fn="strong_wolfe",
+            )
+            self.scheduler = torch.optim.lr_scheduler.ExponentialLR(self.optimizer, gamma=0.95)
+        elif self.optimizer_type == 'adam':
+            self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+            self.scheduler = None
     
-    def train(self, lbfgsIter):
-        """ Train the model using LBFGS optimizer """
+    def train(self, num_iter):
+        """ Train the model using the appropriate optimizer """
         self.iter = 0
-        self.optimizer = self.optimizer_lbfgs
-        for i in range(lbfgsIter):
-            self.optimizer.step(self.loss_func)
-            self.scheduler.step()
+        for i in range(num_iter):
+            if self.optimizer_type == 'lbfgs':
+                self.optimizer.step(self.loss_closure)
+            else:
+                self.loss_closure()
+                self.optimizer.step()
 
-    def loss_func(self):
+            if self.scheduler is not None:
+                self.scheduler.step()
+    
+    def mse_loss(self):
+        """ Reconstruction loss """
+        raise NotImplementedError
+
+    def phys_loss(self):
+        """ Loss for physical model """
+        raise NotImplementedError
+
+    def loss_closure(self):
         """ Compute the loss function and optionally print the model"""
-        _, mse, phys = self.predict_with_loss()
-        loss = mse + phys
+        mse_loss = self.mse_loss()
+        phys_loss = self.phys_loss()
+        loss = mse_loss + phys_loss
+
         self.optimizer.zero_grad()
         loss.backward()
         
         self.iter += 1
         if self.iter % 10 == 0:
-            self.log_tensorboard(loss, mse, phys)
+            self.log_tensorboard(loss, mse_loss, phys_loss)
         if self.iter % 1000 == 0:
-            self.print(loss, mse, phys)
+            self.print(loss, mse_loss, phys_loss)
         
         return loss
     
-    def log_tensorboard(self, loss, mse, phys):
+    def log_tensorboard(self, loss, mse_loss, phys_loss):
         """ Log the loss to tensorboard """
         self.writer.add_scalar("Total Loss", loss, self.iter)
-        self.writer.add_scalar("MSE Loss", mse, self.iter)
-        self.writer.add_scalar("Physics Loss", phys, self.iter)
+        self.writer.add_scalar("MSE Loss", mse_loss, self.iter)
+        self.writer.add_scalar("Physics Loss", phys_loss, self.iter)
     
-    def print(self, loss, mse, phys):
+    def print(self, loss, mse_loss, phys_loss):
         """ Print the loss to console """
-        print(f"Iteration {self.iter}, Loss: {loss.item():.5e}, MSE: {mse.item():.5e}, Phys: {phys.item():.5e}")
-
-    def predict_with_loss(self):
-        """ Compute the predictions and losses """
-        raise NotImplementedError
+        print(f"Iteration {self.iter}, Loss: {loss.item():.5e}, MSE: {mse_loss.item():.5e}, Phys: {phys_loss.item():.5e}")
     
     def forward(self, x):
         """ Model prediction on scaled inputs"""

@@ -1,6 +1,6 @@
 #Font
 font.size : 8
-font.family : Arial
+font.family : Sans-Serif
 
 #Axes
 axes.titlesize : 8
