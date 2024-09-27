@@ -28,7 +28,7 @@ class NavierStokesParameterPINN(PINN):
 
     def parse_data(self, data):
         self.x_f = nn.Parameter(torch.FloatTensor(data['x_f']), requires_grad=True)
-        self.y_f = nn.Parameter(torch.FloatTensor(data['x_f']), requires_grad=True)
+        self.y_f = nn.Parameter(torch.FloatTensor(data['y_f']), requires_grad=True)
         self.t_f = nn.Parameter(torch.FloatTensor(data['t_f']), requires_grad=True)
 
         self.u_f = nn.Parameter(torch.FloatTensor(data['u_f']), requires_grad=False)
