@@ -29,7 +29,7 @@ class KuramotoSivashinskyPINN(PINN):
     def parse_data(self, data):
         self.x_f = nn.Parameter(torch.FloatTensor(data['x_f']), requires_grad=True)
         self.t_f = nn.Parameter(torch.FloatTensor(data['t_f']), requires_grad=True)
-        self.u_f = nn.Parameter(torch.FloatTensor(data['u_f']), requires_grad=True)
+        self.u_f = nn.Parameter(torch.FloatTensor(data['u_f']), requires_grad=False)
 
         X = torch.cat([self.x_f, self.t_f], dim=1)
         self.lb = nn.Parameter(X.min(0)[0], requires_grad=False)

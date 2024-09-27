@@ -63,8 +63,8 @@ class SchrodingerBVPPINN(PINN):
         ux_ub = torch.autograd.grad(u_ub.sum(), self.x_ub, create_graph=True)[0]
         vx_ub = torch.autograd.grad(v_ub.sum(), self.x_ub, create_graph=True)[0]
         
-        bc1 = (u_lb - u_ub).pow(2).sum() + (v_lb - v_ub).pow(2).sum()
-        bc2 = (ux_lb - ux_ub).pow(2).sum() + (vx_lb - vx_ub).pow(2).sum()
+        bc1 = (u_lb - u_ub).pow(2).mean() + (v_lb - v_ub).pow(2).mean()
+        bc2 = (ux_lb - ux_ub).pow(2).mean() + (vx_lb - vx_ub).pow(2).mean()
         
         #Schrodinger loss
         h_f = self(torch.cat([self.x_f, self.t_f], dim=-1))
