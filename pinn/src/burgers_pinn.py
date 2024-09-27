@@ -51,9 +51,9 @@ class BurgersBVPPINN(BurgersPINN):
         super().parse_data(data)
 
         # Also parse boundary terms used for reconstruction error
-        self.x_b = nn.Parameter(torch.FloatTensor(data['x_b']), requires_grad=True)
-        self.t_b = nn.Parameter(torch.FloatTensor(data['t_b']), requires_grad=True)
-        self.u_b = nn.Parameter(torch.FloatTensor(data['u_b']), requires_grad=True)
+        self.x_b = nn.Parameter(torch.FloatTensor(data['x_b']), requires_grad=False)
+        self.t_b = nn.Parameter(torch.FloatTensor(data['t_b']), requires_grad=False)
+        self.u_b = nn.Parameter(torch.FloatTensor(data['u_b']), requires_grad=False)
 
     def get_params(self):
         """ Known parameters for solving BVP """
