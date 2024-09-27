@@ -7,15 +7,23 @@ import numpy as np
 from pinn import PINN
 
 class SchrodingerBVPPINN(PINN):
-    def __init__(self, data: dict, log_dir: str):
+    def __init__(self, 
+                 data: dict , 
+                 layers: list = [2, 100, 100, 100, 100, 2], 
+                 num_params: int = 0,
+                 lr: float = 1e1,
+                 act: nn.Module = nn.Tanh,
+                 optimizer_type: str ='lbfgs',
+                 log_dir: str = "./tb_logs/Schrodinger"):
+        
         super().__init__(
             data=data,
-            layers=[2, 100, 100, 100, 100, 2],
-            num_params=0,
-            lr=1e0,
+            layers=layers,
+            num_params=num_params,
+            lr=lr,
+            act=act,
+            optimizer_type=optimizer_type,
             log_dir=log_dir,
-            act=nn.Tanh,
-            optimizer_type='lbfgs',
         )
 
     def parse_data(self, data):
@@ -70,10 +78,10 @@ class SchrodingerBVPPINN(PINN):
         v_x = torch.autograd.grad(v_f.sum(), self.x_f, retain_graph=True, create_graph=True)[0]
         v_xx = torch.autograd.grad(v_x.sum(), self.x_f, create_graph=True)[0]
         
-        f_u = u_t + 0.5*v_xx + (u_f**2 + v_f**2) * v_f
-        f_v = v_t - 0.5*u_xx - (u_f**2 + v_f**2) * u_f
+        eq_u = u_t + 0.5*v_xx + (u_f**2 + v_f**2) * v_f
+        eq_v = v_t - 0.5*u_xx - (u_f**2 + v_f**2) * u_f
         
-        phys = f_u.pow(2).sum() + f_v.pow(2).sum()
+        phys = eq_u.pow(2).mean() + eq_v.pow(2).mean()
         return phys + bc1 + bc2
 
     def mse_loss(self):
@@ -81,5 +89,5 @@ class SchrodingerBVPPINN(PINN):
         h_b = self.forward(torch.cat([self.x_b, self.t_b], dim=-1))
         u_b = h_b[:, 0:1]
         v_b = h_b[:, 1:2]
-        mse_loss = (u_b - self.u_b).pow(2).sum() + (v_b - self.v_b).pow(2).sum()
+        mse_loss = (u_b - self.u_b).pow(2).mean() + (v_b - self.v_b).pow(2).mean()
         return mse_loss

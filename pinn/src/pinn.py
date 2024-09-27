@@ -4,6 +4,7 @@ import torch.nn.functional as F
 
 from torch.utils.tensorboard import SummaryWriter
 
+from datetime import datetime
 import numpy as np
 
 def init_weights(m):
@@ -22,7 +23,7 @@ class PINN(nn.Module):
                  layers: list, 
                  num_params: int,
                  lr: float = 1e0,
-                 act=Sin,
+                 act=nn.Tanh,
                  optimizer_type='lbfgs',
                  log_dir: str = "./tb_logs"):
         super().__init__()
@@ -38,7 +39,9 @@ class PINN(nn.Module):
         self.init_model()
         self.init_optimizers()
 
-        self.writer = SummaryWriter(log_dir=self.log_dir)
+        # Get day month year hour minute second timestamp
+        timestamp = datetime.now().strftime("%y%m%d_%H%M%S")
+        self.writer = SummaryWriter(log_dir=f'{self.log_dir}/{self.__class__.__name__}_{timestamp}')
 
     def parse_data(self, data):
         """ Parse the relevant data and assign variables to self"""
@@ -67,7 +70,6 @@ class PINN(nn.Module):
                 self.model.parameters(),
                 lr=self.lr,
                 max_iter=50000,
-                max_eval=50000,
                 history_size=50,
                 tolerance_grad=1e-9,
                 tolerance_change=1.0 * np.finfo(float).eps,
@@ -81,7 +83,7 @@ class PINN(nn.Module):
     def train(self, num_iter):
         """ Train the model using the appropriate optimizer """
         self.iter = 0
-        for i in range(num_iter):
+        while self.iter < num_iter:
             if self.optimizer_type == 'lbfgs':
                 self.optimizer.step(self.loss_closure)
             else:
