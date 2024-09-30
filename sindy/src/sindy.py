@@ -45,7 +45,7 @@ class MySINDy(BaseEstimator):
         
         return solve_ivp(rhs, (t[0], t[-1]), x0, t_eval=t, method='LSODA', rtol=1e-12, atol=1e-12).y.T
 
-    def print(self, lhs=None, precision=3, input_features=None):
+    def print(self, lhs=None, precision=3, input_features=None, threshold=1e-8):
         """ Print the inferred equations """
         feature_names = self.library.get_feature_names(input_features)
         coefs = self.optimizer.coef_
@@ -56,7 +56,9 @@ class MySINDy(BaseEstimator):
             eqn_string = f'({lhs_i})\' = '
 
             for coef, feature in zip(coefs[:, i], feature_names):
-                if np.abs(coef) > self.optimizer.threshold:
+                if hasattr(self.optimizer, 'threshold') and np.abs(coef) >= self.optimizer.threshold:
+                    eqn_string += f"{coef:.{precision}f} {feature} + "
+                elif np.abs(coef) >= threshold:
                     eqn_string += f"{coef:.{precision}f} {feature} + "
 
             eqn_string = eqn_string[:-3]

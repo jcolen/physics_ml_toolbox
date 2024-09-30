@@ -40,8 +40,7 @@ class STLSQ(BaseEstimator):
                 # Update the coefficients and indices
                 self.coef_[valid_indices, jj] = coef_ij
                 self.indices_[:, jj] = np.abs(self.coef_[:, jj]) >= self.threshold
-
-
+            
         return self
 
     def predict(self, X):
