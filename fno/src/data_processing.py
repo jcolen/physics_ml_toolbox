@@ -125,3 +125,53 @@ def load_burgers_2d_data(
     else:
         logger.info(f'Dataset length: {len(dataset)}')
         return dataset, None
+    
+def load_darcy_2d_data(
+        train_path='../data/Darcy/piececonst_r421_N1024_smooth1.mat',
+        val_path='../data/Darcy/piececonst_r421_N1024_smooth1.mat',
+        space_resolution=4,
+        positional_encoding=True):
+    
+    def load_and_process(path):
+        data = loadmat(path)
+
+        # Load input and output data
+        x_data = data['coeff'][:, ::space_resolution,::space_resolution]
+        y_data = data['sol'][:, ::space_resolution, ::space_resolution]        
+
+        logger.info(f'Input shape: {x_data.shape}\tOutput shape: {y_data.shape}')
+
+        # Convert to torch tensors
+        N, Y, X = x_data.shape
+        x_data = torch.FloatTensor(x_data[:, None]) #[N, 1, Y, X]
+        y_data = torch.FloatTensor(y_data[:, None]) #[N, 1, Y, X]
+
+        if positional_encoding:
+            logger.info('Adding positional encoding')
+            xmin, xmax = 0, 1
+            ymin, ymax = 0, 1
+            y_grid = torch.FloatTensor(np.linspace(ymin, ymax, Y))[None, None, :, None] #[1, Y, 1]
+            x_grid = torch.FloatTensor(np.linspace(xmin, xmax, X))[None, None, None, :] #[1, 1, X]
+
+            x_data = torch.concatenate([
+                x_data,
+                y_grid.repeat([N, 1, 1, X]), 
+                x_grid.repeat([N, 1, Y, 1]),
+            ], dim=1)
+        
+        # Create torch dataset
+        logger.info(f'Creating TensorDataset with input shape: {x_data.shape}, output shape: {y_data.shape}')
+        dataset = TensorDataset(x_data.float(), y_data.float())
+        return dataset
+
+    # Load mat file
+    logger.info(f'Loading train_dataset from {train_path}')
+    train = load_and_process(train_path)
+
+    logger.info(f'Loading val dataset from {val_path}')
+    val = load_and_process(val_path)
+
+    logger.info(f'Training dataset length: {len(train)}')
+    logger.info(f'Validation dataset length: {len(val)}')
+
+    return train, val
