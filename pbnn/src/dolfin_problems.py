@@ -3,7 +3,7 @@ import dolfin as dlf
 import dolfin_adjoint as d_ad
 import pyadjoint as pyad
 
-from mesh_utils import scalar_img_to_mesh
+from mesh_utils import convert_dof_array_to_function
 
 class BuildDolfinProblem(object):
     """ Generic dolfin problem builder. Generates predictions and reduced functionals for calculating dJ/dF """
@@ -17,18 +17,11 @@ class BuildDolfinProblem(object):
     def reduced_functional(self, target):
         """ Reduced loss functional using dolfin adjoint """
 
-        # Ensure target is a dolfin function, not an array
-        if not isinstance(target, d_ad.Function):
-            output = scalar_img_to_mesh(
-                target,
-                x=self.mesh.coordinate()[:, 0],
-                y=self.mesh.coordinates()[:, 1],
-                function_space=self.function_space,
-                use_torch=False,
-                vals_only=False,
-            )
-        else:
-            output = target
+        # Assume the target is a [2, N] ndarray representing mesh coordinates
+        # This is what we typically do on dataset creation
+        v2d = dlf.vertex_to_dof_map(self.function_space)
+        output = target.flatten()[v2d]
+        output = convert_dof_array_to_function(output, self.function_space)
 
         # Build problem functions
         force = d_ad.Function(self.function_space)
@@ -88,12 +81,12 @@ class BuildStokesProblem(BuildDolfinProblem):
         v, q = dlf.TestFunctions(self.mixed_function_space)
 
         # Stabilized first order formulation for mixed elements
-        a = ufl.inner( ufl.grad(u), ufl.grad(v) ) * ufl.dx - \
-            ufl.div(v) * p * ufl.dx + \
-            ufl.div(u) * q * ufl.dx + \
-            self.delta * ufl.inner(ufl.grad(p), ufl.grad(q)) * ufl.dx
+        a = - ufl.inner( ufl.grad(u), ufl.grad(v) ) * ufl.dx \
+            + ufl.div(v) * p * ufl.dx \
+            - ufl.div(u) * q * ufl.dx \
+            - self.delta * ufl.inner(ufl.grad(p), ufl.grad(q)) * ufl.dx
         
-        L = ufl.inner(force, v) * ufl.dx + self.delta * ufl.inner(force, ufl.grad(q)) * ufl.dx
+        L = -ufl.inner(force, v) * ufl.dx + self.delta * ufl.inner(force, ufl.grad(q)) * ufl.dx
 
 
         # Assemble and solve the problem
@@ -101,3 +94,36 @@ class BuildStokesProblem(BuildDolfinProblem):
         d_ad.solve(a == L, pred, self.bc)
         u, p = pred.split()
         return u
+
+class BuildElasticityAdhesionProblem(BuildDolfinProblem):
+    """ Linear elasticity + adhesion equation from Oakes et al (2014) """
+    def __init__(self, mesh, alpha=0.1, sigma_a=1.):
+        super().__init__(mesh)
+
+        self.scalar_element = ufl.FiniteElement('CG', mesh.ufl_cell(), 1)
+        self.vector_element = ufl.VectorElement('CG', mesh.ufl_cell(), 1)
+
+        self.function_space = dlf.FunctionSpace(mesh, self.scalar_element)
+        self.vector_function_space = dlf.FunctionSpace(mesh, self.vector_element)
+
+        self.alpha = alpha
+        self.sigma_a = sigma_a
+
+    def forward(self, Y):
+        u = dlf.TrialFunction(self.vector_function_space)
+        v = dlf.TestFunction(self.vector_function_space)
+        n = dlf.FacetNormal(self.mesh)
+
+        def symmetric_gradient(u):
+            return 0.5 * (ufl.grad(u) + ufl.grad(u).T)
+
+        def stress(u):
+            return symmetric_gradient(u) + self.alpha * ufl.div(u) * ufl.Identity(2)
+
+        a = ufl.inner(stress(u), symmetric_gradient(v)) * ufl.dx + ufl.dot(Y * u, v) * ufl.dx
+        L = ufl.dot(-self.sigma_a * n, v) * ufl.ds
+
+        # Assemble and solve the problem
+        pred = dlf.Function(self.vector_function_space)
+        dlf.solve(a == L, pred)
+        return pred

@@ -42,7 +42,7 @@ class HDF5Dataset(torch.utils.data.Dataset):
             'mesh_y': self.mesh.coordinates()[:, 1],
         }
 
-        sample['Jhat'] = self.build_problem(sample)
+        sample['Jhat'] = self.build_problem.reduced_functional(sample['output'])
         sample['function_space'] = self.build_problem.function_space
         sample['inputs'] = torch.FloatTensor(sample['inputs'])
 

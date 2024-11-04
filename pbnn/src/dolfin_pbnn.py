@@ -5,7 +5,9 @@ import torch.nn.functional as F
 import dolfin as dlf
 import dolfin_adjoint as d_ad
 
-from data_processing import scalar_img_to_mesh
+from torchvision.transforms import v2
+
+from mesh_utils import multichannel_img_to_mesh
 
 class Sin(nn.Module):
     ''' Sin activation '''
@@ -66,12 +68,15 @@ class DolfinPBNN(nn.Module):
             self.cnn1.append(ConvNextBlock(hidden_dim, hidden_dim, dropout_rate=dropout_rate))
             self.cnn2.append(ConvNextBlock(hidden_dim, hidden_dim, dropout_rate=dropout_rate))
 
+        self.blur = v2.GaussianBlur(kernel_size=7, sigma=(1., 3.))
+
     def training_step(self, sample):
         # Get force prediction
         force = self.forward(
             sample['inputs'], 
             function_space=sample['function_space'],
             coords=(sample['grid_x'], sample['grid_y']))
+        force = force.T.flatten() # Reshape for application to Jhat
         
         # Get loss and gradient
         Jhat = sample['Jhat']
@@ -89,14 +94,17 @@ class DolfinPBNN(nn.Module):
             sample['inputs'], 
             function_space=sample['function_space'],
             coords=(sample['grid_x'], sample['grid_y']))
+        force = force.T.flatten() # Reshape for application to Jhat
         
-       # Get loss
+        # Get loss
         Jhat = sample['Jhat']
         loss = Jhat(force.detach().cpu().numpy())
 
         return force, loss
     
     def forward(self, x, function_space=None, coords=None):
+        # Add fictitious batch dimension
+        x = x[None]
         # CNN part of computation operating on grid
         x = self.read_in(x)
         for cell in self.cnn1:
@@ -108,12 +116,19 @@ class DolfinPBNN(nn.Module):
         latent = F.interpolate(latent, x.shape[-2:])
 
         x = torch.cat([x, latent], dim=1)
-        force = self.read_out(x).squeeze()
+        force = self.read_out(x)
+
+        # Apply gaussian blur for smoothing purposes
+        # Fixed nearest-neighbor interpolation causes some issues
+        force = self.blur(force.exp())
+
+        # Remove fictitious batch dimension
+        force = force[0]
 
         if function_space is None or coords is None:
             return force
         
         # Move the source term to the mesh vertices
-        force_mesh = scalar_img_to_mesh(force, *coords, function_space, vals_only=True)
+        force_mesh = multichannel_img_to_mesh(force, *coords, function_space, return_function=False)
         return force_mesh
 
