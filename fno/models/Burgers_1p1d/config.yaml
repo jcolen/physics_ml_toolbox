@@ -1,0 +1,36 @@
+dataset:
+  args:
+    path: ../data/Burgers/burgers_v100_t100_r1024_N2048.mat
+    random_seed: 42
+    space_resolution: 1
+    spacetime_encoding: true
+    time_resolution: 1
+    validation_split: 0.2
+  method_path: data_processing.load_burgers_2d_data
+loader:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  shuffle: true
+model:
+  args:
+    fno_channels: 32
+    fno_pad: 0
+    in_channels: 2
+    modes:
+    - 16
+    - 16
+    out_channels: 1
+  class_path: fno_1p1d.FNO1p1d
+  weights: ../models/Burgers_1p1d//model_weight.ckpt
+optimizer:
+  args:
+    lr: 0.003
+  class_path: torch.optim.Adam
+save_path: ../models/Burgers_1p1d/
+scheduler:
+  args:
+    patience: 10
+  class_path: torch.optim.lr_scheduler.ReduceLROnPlateau
+training:
+  num_epochs: 10
