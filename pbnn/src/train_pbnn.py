@@ -22,7 +22,7 @@ if __name__ == '__main__':
     gen.manual_seed(42)
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [0.8, 0.2], generator=gen)
     print('Train dataset length:', len(train_dataset))
-    print('Val dataset length:', len(val_dataset))
+    print('Val dataset length:', len(val_dataset), flush=True)
 
     # Load model
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -30,7 +30,7 @@ if __name__ == '__main__':
 
     # Build optimizers
     optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(patience=10, factor=0.5, min_lr=1e-7)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=10, factor=0.5, min_lr=1e-7)
 
     train_idxs = np.arange(len(train_dataset), dtype=int)
     num_epochs = 20
@@ -67,7 +67,7 @@ if __name__ == '__main__':
                 val_loss += loss / len(val_dataset)
 
         scheduler.step(val_loss)
-        print(f'Epoch {epoch}\tTrain Loss = {train_loss:.3g}\tVal Loss = {val_loss:.3g}\t{time()-t:.3g} s')
+        print(f'Epoch {epoch}\tTrain Loss = {train_loss:.3g}\tVal Loss = {val_loss:.3g}\t{time()-t:.3g} s', flush=True)
 
         if val_loss < best_loss:
             best_loss = val_loss
