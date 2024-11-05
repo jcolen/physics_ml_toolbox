@@ -7,12 +7,13 @@ import dolfin_adjoint as d_ad
 
 from scipy.interpolate import griddata
 
-from dolfin_problems import *
+import dolfin_problems
 
 class HDF5Dataset(torch.utils.data.Dataset):
     def __init__(self, 
                  path='../data/poisson_dataset.hdf5',
-                 build_problem=BuildPoissonProblem):
+                 mesh='../data/square_mesh.xml',
+                 build_problem='dolfin_problems.BuildPoissonProblem'):
         super().__init__()
 
         self.path = path
@@ -25,8 +26,8 @@ class HDF5Dataset(torch.utils.data.Dataset):
             self.forces = h5f['forces'][()]
             self.outputs = h5f['outputs'][()]
         
-        self.mesh = d_ad.UnitSquareMesh(nx=self.mesh_size, ny=self.mesh_size)
-        self.build_problem = build_problem(self.mesh)
+        self.mesh = d_ad.Mesh(mesh)
+        self.build_problem = eval(build_problem)(self.mesh)
     
     def __len__(self):
         return self.inputs.shape[0]

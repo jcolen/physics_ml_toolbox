@@ -19,8 +19,10 @@ class BuildDolfinProblem(object):
 
         # Assume the target is a [2, N] ndarray representing mesh coordinates
         # This is what we typically do on dataset creation
-        v2d = dlf.vertex_to_dof_map(self.function_space)
-        output = target.flatten()[v2d]
+
+        # dof_to_vertex_map gives the corresponding vertex for each ordered dof
+        d2v = dlf.dof_to_vertex_map(self.function_space)
+        output = target.flatten()[d2v]
         output = convert_dof_array_to_function(output, self.function_space)
 
         # Build problem functions
@@ -61,7 +63,7 @@ class BuildPoissonProblem(BuildDolfinProblem):
 
 class BuildStokesProblem(BuildDolfinProblem):
     """ Incompressible Stokes equation on a square box """
-    def __init__(self, mesh):
+    def __init__(self, mesh, nu=0.005):
         super().__init__(mesh)
 
         self.vector_element = ufl.VectorElement('CG', mesh.ufl_cell(), 1)
@@ -71,6 +73,7 @@ class BuildStokesProblem(BuildDolfinProblem):
         self.function_space = dlf.FunctionSpace(mesh, self.vector_element)
         self.mixed_function_space = dlf.FunctionSpace(mesh, self.mixed_element)
 
+        self.nu = nu # Viscosity coefficient
         self.delta = 0.2 * dlf.CellDiameter(mesh)**2
 
         self.bc = d_ad.DirichletBC(self.mixed_function_space.sub(0), d_ad.Constant((0, 0)), 'on_boundary')
@@ -81,7 +84,7 @@ class BuildStokesProblem(BuildDolfinProblem):
         v, q = dlf.TestFunctions(self.mixed_function_space)
 
         # Stabilized first order formulation for mixed elements
-        a = - ufl.inner( ufl.grad(u), ufl.grad(v) ) * ufl.dx \
+        a = - self.nu * ufl.inner( ufl.grad(u), ufl.grad(v) ) * ufl.dx \
             + ufl.div(v) * p * ufl.dx \
             - ufl.div(u) * q * ufl.dx \
             - self.delta * ufl.inner(ufl.grad(p), ufl.grad(q)) * ufl.dx
@@ -124,6 +127,31 @@ class BuildElasticityAdhesionProblem(BuildDolfinProblem):
         L = ufl.dot(-self.sigma_a * n, v) * ufl.ds
 
         # Assemble and solve the problem
-        pred = dlf.Function(self.vector_function_space)
-        dlf.solve(a == L, pred)
+        pred = d_ad.Function(self.vector_function_space)
+        d_ad.solve(a == L, pred)
         return pred
+    
+    def reduced_functional(self, target):
+        """ Reduced loss functional using dolfin adjoint """
+
+        # Assume the target is a [2, N] ndarray representing mesh coordinates
+        # This is what we typically do on dataset creation
+
+        # dof_to_vertex_map gives the corresponding vertex for each ordered dof
+        d2v = dlf.dof_to_vertex_map(self.vector_function_space)
+        output = target.flatten()[d2v]
+        output = convert_dof_array_to_function(output, self.vector_function_space)
+
+        # Build problem functions
+        Y = d_ad.Function(self.function_space)
+        Y.vector()[:] = 0.
+
+        u_pred = self.forward(Y)
+
+        # Build loss functional as squared error b/w prediction and self.output
+        loss = ufl.dot(Y * u_pred - output, Y * u_pred - output) * ufl.dx
+        J = d_ad.assemble(loss)
+
+        # Build controls to allow modification of the source term
+        control = d_ad.Control(Y)
+        return pyad.reduced_functional_numpy.ReducedFunctionalNumPy(J, control)

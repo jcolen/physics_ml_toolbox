@@ -6,7 +6,10 @@ from matplotlib import collections
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 
-def plot_mesh(data, mesh, ax,
+from scipy.interpolate import griddata
+from skimage.transform import downscale_local_mean
+
+def plot_mesh(ax, data, mesh,
               cmap=plt.cm.viridis,
               vmin=None, vmax=None,
               colorbar=True,
@@ -40,16 +43,16 @@ def plot_mesh(data, mesh, ax,
                             ticks=[vmin, vmean, vmax])
         cbar.ax.set_ylabel(colorbar_title, rotation=-90)
 
-def plot_grid(data, coords, ax,
+def plot_grid(ax, data, X, Y,
               cmap=plt.cm.viridis,
               vmin=None, vmax=None,
               colorbar=True,
               colorbar_title=""):
-    xmin, ymin = coords[0].min(), coords[1].min()
-    xmax, ymax = coords[0].max(), coords[1].max()
+    xmin, ymin = X.min(), Y.min()
+    xmax, ymax = X.max(), Y.max()
 
     norm = mpl.colors.Normalize(vmin=vmin, vmax=vmax)
-    ax.pcolormesh(coords[0], coords[1], data, norm=norm, cmap=cmap)
+    ax.pcolormesh(X, Y, data, norm=norm, cmap=cmap)
     ax.set(xlim=[xmin, xmax],
            ylim=[ymin, ymax])
     ax.set_aspect(1)
@@ -60,6 +63,53 @@ def plot_grid(data, coords, ax,
         vmean = (vmin + vmax)/2
         cax = ax.inset_axes([1.05, 0, 0.05, 1])
         cbar = plt.colorbar(sm, cax=cax, ax=ax,
+                            ticks=[vmin, vmean, vmax])
+        cbar.ax.set_ylabel(colorbar_title, rotation=-90)
+
+def plot_mesh_vector(ax, mesh_vals, mesh, N=100, **kwargs):
+    X_mesh = mesh.coordinates()[:, 0]
+    Y_mesh = mesh.coordinates()[:, 1]
+    X_grid, Y_grid = np.meshgrid(
+       np.linspace(X_mesh.min(), X_mesh.max(), N),
+       np.linspace(Y_mesh.min(), Y_mesh.max(), N),
+    )
+    grid_vals = np.zeros([2, *X_grid.shape])
+
+    grid_vals[0] = griddata((X_mesh, Y_mesh), mesh_vals[0], (X_grid, Y_grid))
+    grid_vals[1] = griddata((X_mesh, Y_mesh), mesh_vals[1], (X_grid, Y_grid))
+
+    plot_grid_vector(ax, 
+                     grid_vals, 
+                     X_grid, Y_grid, 
+                     **kwargs)
+
+def plot_grid_vector(ax, grid_vals, X_grid, Y_grid, 
+                     downscale=4, threshold=0.1,             
+                     cmap=plt.cm.viridis,
+                     vmin=None, vmax=None,
+                     colorbar=True,
+                     colorbar_title=""):
+
+    grid_norm = np.linalg.norm(grid_vals, axis=0)
+    im = ax.pcolormesh(X_grid, Y_grid, grid_norm, vmin=vmin, vmax=vmax)
+
+    grid_vals = np.stack([
+        downscale_local_mean(grid_vals[0], (downscale, downscale)),
+        downscale_local_mean(grid_vals[1], (downscale, downscale)),
+    ])
+    grid_norm = np.linalg.norm(grid_vals, axis=0)
+    mask = grid_norm >= threshold
+
+    X_grid = downscale_local_mean(X_grid, (downscale, downscale))
+    Y_grid = downscale_local_mean(Y_grid, (downscale, downscale))
+
+    ax.quiver(X_grid[mask], Y_grid[mask], grid_vals[0, mask], grid_vals[1, mask], color='white')
+
+    if colorbar:
+        vmin, vmax = im.get_clim()
+        vmean = (vmin + vmax)/2
+        cax = ax.inset_axes([1.05, 0, 0.05, 1])
+        cbar = plt.colorbar(im, cax=cax, ax=ax,
                             ticks=[vmin, vmean, vmax])
         cbar.ax.set_ylabel(colorbar_title, rotation=-90)
 

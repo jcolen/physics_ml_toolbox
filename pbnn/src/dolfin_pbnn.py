@@ -68,7 +68,7 @@ class DolfinPBNN(nn.Module):
             self.cnn1.append(ConvNextBlock(hidden_dim, hidden_dim, dropout_rate=dropout_rate))
             self.cnn2.append(ConvNextBlock(hidden_dim, hidden_dim, dropout_rate=dropout_rate))
 
-        self.blur = v2.GaussianBlur(kernel_size=7, sigma=(1., 3.))
+        self.blur = v2.GaussianBlur(kernel_size=7, sigma=(0.1, 2.))
 
     def training_step(self, sample):
         # Get force prediction
