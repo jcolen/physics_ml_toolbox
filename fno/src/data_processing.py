@@ -128,7 +128,7 @@ def load_burgers_2d_data(
     
 def load_darcy_2d_data(
         train_path='../data/Darcy/piececonst_r421_N1024_smooth1.mat',
-        val_path='../data/Darcy/piececonst_r421_N1024_smooth1.mat',
+        val_path='../data/Darcy/piececonst_r421_N1024_smooth2.mat',
         space_resolution=4,
         positional_encoding=True):
     

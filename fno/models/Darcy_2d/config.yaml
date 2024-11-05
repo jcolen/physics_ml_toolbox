@@ -3,7 +3,7 @@ dataset:
     positional_encoding: true
     space_resolution: 2
     train_path: ../data/Darcy/piececonst_r421_N1024_smooth1.mat
-    val_path: ../data/Darcy/piececonst_r421_N1024_smooth1.mat
+    val_path: ../data/Darcy/piececonst_r421_N1024_smooth2.mat
   method_path: data_processing.load_darcy_2d_data
 loader:
   batch_size: 32
@@ -16,19 +16,22 @@ model:
     fno_pad: 0
     in_channels: 3
     modes:
-    - 16
-    - 16
+    - 20
+    - 20
     out_channels: 1
   class_path: fno_2d.FNO2d
   weights: ../models/Darcy_2d//model_weight.ckpt
 optimizer:
   args:
-    lr: 0.003
+    lr: 0.001
+    weight_decay: 0.0001
   class_path: torch.optim.Adam
 save_path: ../models/Darcy_2d/
 scheduler:
   args:
+    factor: 0.5
+    min_lr: 1.0e-06
     patience: 10
   class_path: torch.optim.lr_scheduler.ReduceLROnPlateau
 training:
-  num_epochs: 50
+  num_epochs: 500
