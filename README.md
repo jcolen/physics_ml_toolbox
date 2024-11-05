@@ -9,9 +9,9 @@ Rest assured I'll do my best to add to this as I encounter more new and exciting
 ├── env.yaml                          : Conda setup file with package requirements
 ├── README.md                         : Readme documentation
 ├── physics_ml_toolbox
-    ├── fno                           : Fourier neural operators (and how to interpret them)
-    ├── pinn                          : Physics-informed neural networks
+    ├── fno                           : Fourier neural operators
     ├── pbnn                          : Physical bottleneck for PDE-constrained optimization
+    ├── pinn                          : Physics-informed neural networks
     ├── sindy                         : Sparse identification of nonlinear dynamical systems
 ```
 
@@ -23,5 +23,7 @@ I can minimize the amount of time I spend redoing solved problems or searching t
 Within each subfolder, I'll include an additional `README.md` with references to relevant papers. I'll also include any comments 
 and, if possible, support those comments with suitable examples.
 Each subfolder will also have its own python environment file. This is to minimize any headaches that may arise with resolving dependencies across multiple conflicting, old, or poorly maintained packages.
+
+For an idea of things I am working on adding, or plan to add in the future, see the issue tracker. 
 
 Please direct any questions, comments, or complaints to `jcolen@odu.edu`
