@@ -7,7 +7,7 @@ import dolfin_adjoint as d_ad
 
 from torchvision.transforms import v2
 
-from mesh_utils import multichannel_img_to_mesh
+from mesh_utils import multichannel_img_to_dofs
 
 class Sin(nn.Module):
     ''' Sin activation '''
@@ -129,6 +129,6 @@ class DolfinPBNN(nn.Module):
             return force
         
         # Move the source term to the mesh vertices
-        force_mesh = multichannel_img_to_mesh(force, *coords, function_space, return_function=False)
+        force_mesh = multichannel_img_to_dofs(force, *coords, function_space, return_function=False)
         return force_mesh
 

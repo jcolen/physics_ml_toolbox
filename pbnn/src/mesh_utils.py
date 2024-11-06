@@ -29,7 +29,7 @@ def function_space_dim(function_space):
     else:
         return np.prod(element_shape)
 
-def multichannel_img_to_mesh(img, x, y, function_space, return_function=False):
+def multichannel_img_to_dofs(img, x, y, function_space, return_function=False):
     ''' Nearest neighbor interpolation on a mesh '''
     use_torch = torch.is_tensor(img)
 

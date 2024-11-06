@@ -18,11 +18,9 @@ optimizer:
         lr: 0.001
 
 scheduler:
-    class_path: torch.optim.lr_scheduler.ReduceLROnPlateau
+    class_path: torch.optim.lr_scheduler.ExponentialLR
     args:
-        patience: 10
-        factor: 0.5
-        min_lr: 0.0000001
+        gamma: 0.99
 
 training:
     epochs: 500
