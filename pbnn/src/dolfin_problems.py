@@ -22,7 +22,8 @@ class BuildDolfinProblem(object):
 
         # dof_to_vertex_map gives the corresponding vertex for each ordered dof
         d2v = dlf.dof_to_vertex_map(self.function_space)
-        output = target.flatten()[d2v]
+        # Important to transpose because fenics does [N, C] but torch does [C, N]
+        output = target.T.flatten()[d2v]
         output = convert_dof_array_to_function(output, self.function_space)
 
         # Build problem functions
@@ -32,7 +33,7 @@ class BuildDolfinProblem(object):
         pred = self.forward(force)
 
         # Build loss functional as squared error b/w prediction and self.output
-        loss = ufl.inner(pred - output, pred - output) * ufl.dx
+        loss = ufl.dot(pred - output, pred - output) * ufl.dx
         J = d_ad.assemble(loss)
 
         # Build controls to allow modification of the source term
@@ -41,7 +42,7 @@ class BuildDolfinProblem(object):
 
 class BuildPoissonProblem(BuildDolfinProblem):
     """ Poisson equation with source term """
-    def __init__(self, mesh):
+    def __init__(self, mesh, nu=0.005):
         super().__init__(mesh)
         self.element = ufl.FiniteElement('CG', mesh.ufl_cell(), 1)
         self.function_space = dlf.FunctionSpace(mesh, self.element)
@@ -49,12 +50,14 @@ class BuildPoissonProblem(BuildDolfinProblem):
         # Create the boundary condition
         self.bc = d_ad.DirichletBC(self.function_space, d_ad.Constant(0.), 'on_boundary')
 
+        self.nu = nu
+
     def forward(self, force):
         u = dlf.TrialFunction(self.function_space)
         v = dlf.TestFunction(self.function_space)
 
         # Assemble the problem
-        a = -ufl.inner(ufl.grad(u), ufl.grad(v)) * ufl.dx
+        a = -self.nu * ufl.inner(ufl.grad(u), ufl.grad(v)) * ufl.dx
         L = force * v * ufl.dx
 
         pred = d_ad.Function(self.function_space)
@@ -139,7 +142,8 @@ class BuildElasticityAdhesionProblem(BuildDolfinProblem):
 
         # dof_to_vertex_map gives the corresponding vertex for each ordered dof
         d2v = dlf.dof_to_vertex_map(self.vector_function_space)
-        output = target.flatten()[d2v]
+        # Important to transpose because fenics does [N, C] but torch does [C, N]
+        output = target.T.flatten()[d2v]
         output = convert_dof_array_to_function(output, self.vector_function_space)
 
         # Build problem functions

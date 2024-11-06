@@ -5,11 +5,19 @@ import dolfin as dlf
 import dolfin_adjoint as d_ad
 
 def convert_dof_array_to_function(dof_vals, function_space):
+    """ Convert a degree of freedom array to a fenics function
+        Assumes dof_vals obeys suitable dof ordering for function space
+            - The mapping from vertices to dofs is given by either
+                vals_dofs = vals_vertex[dlf.dof_to_vertex_map(function_space)]
+                vals_dofs[dlf.vertex_to_dof_map(function_space)] = vals_vertex
+            - Fenics assumes ordering [N, C]! Note that torch typically places 
+                channel first. Because of this, arrays should be transposed before 
+                entering this function.
+    """
     if torch.is_tensor(dof_vals):
         dof_vals = dof_vals.detach().numpy()
     
     dof_func = d_ad.Function(function_space)
-    dof_vals = dof_vals.T # Important to transpose because fenics does [N, C] but torch does [C, N]
     dof_func.vector().set_local(dof_vals.flatten())
 
     return dof_func
@@ -53,6 +61,7 @@ def multichannel_img_to_mesh(img, x, y, function_space, return_function=False):
         dof_vals = np.stack(dof_vals)
     
     if return_function:
-        return convert_dof_array_to_function(dof_vals, function_space)
+        # Important to transpose because fenics does [N, C] but torch does [C, N]
+        return convert_dof_array_to_function(dof_vals.T, function_space)
     else: 
         return dof_vals

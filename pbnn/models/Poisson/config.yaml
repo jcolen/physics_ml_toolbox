@@ -1,0 +1,27 @@
+dataset:
+  build_problem: dolfin_problems.BuildPoissonProblem
+  mesh: ../data/square_mesh.xml
+  path: ../data/poisson_dataset.hdf5
+model:
+  args:
+    dropout_rate: 0.1
+    hidden_dim: 64
+    input_dim: 3
+    num_hidden: 8
+    output_dim: 1
+  class_path: dolfin_pbnn.DolfinPBNN
+  weights: ../models/Poisson/model_weight.ckpt
+optimizer:
+  args:
+    lr: 0.001
+  class_path: torch.optim.Adam
+save_path: ../models/Poisson
+scheduler:
+  args:
+    factor: 0.5
+    min_lr: 1.0e-07
+    patience: 10
+  class_path: torch.optim.lr_scheduler.ReduceLROnPlateau
+training:
+  batch_size: 16
+  epochs: 500
