@@ -2,15 +2,18 @@ dataset:
     path: ../data/poisson_dataset.hdf5
     mesh: ../data/square_mesh.xml
     build_problem: dolfin_problems.BuildPoissonProblem
+    reduced_functional: True
 
 model:
     class_path: dolfin_pbnn.DolfinPBNN
     args:
-        input_dim: 3
-        output_dim: 1
-        num_hidden: 8
-        hidden_dim: 64
-        dropout_rate: 0.1
+        positive_definite: True
+        model_type: models.LatentNet
+        model_kwargs:
+            input_dims: 3
+            output_dims: 1
+            hidden_dims: 64
+            num_hidden: 8
 
 optimizer:
     class_path: torch.optim.Adam
@@ -23,7 +26,7 @@ scheduler:
         gamma: 0.99
 
 training:
-    epochs: 500
+    epochs: 200
     batch_size: 16
 
-save_path: ../models/Poisson
+save_path: ../models/Poisson/DolfinLatentNet

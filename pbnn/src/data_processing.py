@@ -14,7 +14,8 @@ class HDF5Dataset(torch.utils.data.Dataset):
     def __init__(self, 
                  path='../data/poisson_dataset.hdf5',
                  mesh='../data/square_mesh.xml',
-                 build_problem='dolfin_problems.BuildPoissonProblem'):
+                 build_problem='dolfin_problems.BuildPoissonProblem',
+                 reduced_functional=True):
         super().__init__()
 
         self.path = path
@@ -28,6 +29,7 @@ class HDF5Dataset(torch.utils.data.Dataset):
         
         self.mesh = d_ad.Mesh(mesh)
         self.build_problem = eval(build_problem)(self.mesh)
+        self.reduced_functional = reduced_functional
     
     def __len__(self):
         return self.inputs.shape[0]
@@ -42,8 +44,14 @@ class HDF5Dataset(torch.utils.data.Dataset):
             'mesh_x': self.mesh.coordinates()[:, 0],
             'mesh_y': self.mesh.coordinates()[:, 1],
         }
-
-        sample['Jhat'] = self.build_problem.reduced_functional(sample['output'])
         sample['function_space'] = self.build_problem.function_space
+
+        if self.reduced_functional:
+            sample['Jhat'] = self.build_problem.reduced_functional(sample['output'])
+        else:
+            rhs, diag, target = self.build_problem.assembled_problem(sample['output'])
+            sample['rhs'] = rhs
+            sample['diag'] = diag
+            sample['target'] = target
 
         return sample

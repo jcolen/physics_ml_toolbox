@@ -4,6 +4,7 @@ import dolfin_adjoint as d_ad
 import pyadjoint as pyad
 
 from mesh_utils import convert_dof_array_to_function
+from scipy import sparse
 
 class BuildDolfinProblem(object):
     """ Generic dolfin problem builder. Generates predictions and reduced functionals for calculating dJ/dF """
@@ -13,6 +14,17 @@ class BuildDolfinProblem(object):
     def forward(self, force):
         """ Forward problem solved by dolfin """
         raise NotImplementedError
+    
+    def vertex_to_dof_order(self, target):
+        """ Assume the target is a [2, N] ndarray representing mesh coordinates
+            Convert the target to a flattened [N, 2] -> [N x 2] array representing
+            Fenics dofs
+            dof_to_vertex_map gives the corresponding vertex for each ordered dof
+            Important to transpose because fenics does [N, C] but torch does [C, N]
+        """
+        d2v = dlf.dof_to_vertex_map(self.function_space)
+        output = target.T.flatten()[d2v]
+        return output
 
     def reduced_functional(self, target):
         """ Reduced loss functional using dolfin adjoint """
@@ -52,6 +64,26 @@ class BuildPoissonProblem(BuildDolfinProblem):
 
         self.nu = nu
 
+        # Assemble the problem
+        u = dlf.TrialFunction(self.function_space)
+        v = dlf.TestFunction(self.function_space)
+
+        a = -self.nu * ufl.inner(ufl.grad(u), ufl.grad(v)) * ufl.dx # RHS
+        A = dlf.assemble(a)
+        self.bc.apply(A)
+
+        # Account for internal scaling
+        diag = dlf.assemble(v * ufl.dx)[:]
+
+        # Precompute matrix for OLS solution
+        A = sparse.csr_matrix(A.array())
+        rhs = sparse.linalg.inv(A.T @ A) @ A.T
+
+        rhs = rhs.todense()
+
+        self.rhs = rhs
+        self.diag = diag
+
     def forward(self, force):
         u = dlf.TrialFunction(self.function_space)
         v = dlf.TestFunction(self.function_space)
@@ -63,6 +95,10 @@ class BuildPoissonProblem(BuildDolfinProblem):
         pred = d_ad.Function(self.function_space)
         d_ad.solve(a == L, pred, self.bc)
         return pred
+    
+    def assembled_problem(self, target):
+        output = self.vertex_to_dof_order(target)
+        return self.rhs, self.diag, output
 
 class BuildStokesProblem(BuildDolfinProblem):
     """ Incompressible Stokes equation on a square box """

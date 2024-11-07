@@ -4,6 +4,7 @@ import numpy as np
 
 from data_processing import HDF5Dataset
 import dolfin_pbnn
+import torch_pbnn
 
 import yaml
 import os
