@@ -27,13 +27,12 @@ class TorchPBNN(nn.Module):
         force = force.T.flatten() # Reshape for application to Jhat
 
         # Get output prediction
-        rhs = torch.FloatTensor(sample['rhs']).to(force.device)
-        diag = torch.FloatTensor(sample['diag']).to(force.device)
+        solution_matrix = torch.FloatTensor(sample['solution_matrix']).to(force.device)
         target = torch.FloatTensor(sample['target']).to(force.device)
 
-        pred = rhs @ force * diag
+        pred = torch.einsum('...ij,...j->...i', solution_matrix, force)
 
-        loss = torch.sum( (pred - target) * (pred - target) * diag )
+        loss = torch.mean( (pred - target) * (pred - target) )
         loss.backward()
         
         return force, loss
@@ -47,13 +46,12 @@ class TorchPBNN(nn.Module):
         force = force.T.flatten() # Reshape for application to Jhat
         
         # Get output prediction
-        rhs = torch.FloatTensor(sample['rhs']).to(force.device)
-        diag = torch.FloatTensor(sample['diag']).to(force.device)
+        solution_matrix = torch.FloatTensor(sample['solution_matrix']).to(force.device)
         target = torch.FloatTensor(sample['target']).to(force.device)
 
-        pred = rhs @ force * diag
+        pred = torch.einsum('...ij,...j->...i', solution_matrix, force)
 
-        loss = torch.sum( (pred - target) * (pred - target) * diag )
+        loss = torch.mean( (pred - target) * (pred - target) )
 
         return force, loss
     

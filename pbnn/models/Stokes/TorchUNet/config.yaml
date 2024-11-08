@@ -1,0 +1,30 @@
+dataset:
+  build_problem: dolfin_problems.BuildStokesProblem
+  mesh: ../data/square_mesh.xml
+  path: ../data/stokes_dataset.hdf5
+  reduced_functional: false
+model:
+  args:
+    model_kwargs:
+      blocks_per_stage: 2
+      conv_stride: 2
+      input_dims: 3
+      num_stages: 3
+      output_dims: 2
+      stage_dims: 16
+    model_type: models.UNet
+    positive_definite: false
+  class_path: torch_pbnn.TorchPBNN
+  weights: ../models/Stokes/TorchUNet/model_weight.ckpt
+optimizer:
+  args:
+    lr: 0.001
+  class_path: torch.optim.Adam
+save_path: ../models/Stokes/TorchUNet
+scheduler:
+  args:
+    gamma: 0.99
+  class_path: torch.optim.lr_scheduler.ExponentialLR
+training:
+  batch_size: 16
+  epochs: 200

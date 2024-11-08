@@ -49,9 +49,8 @@ class HDF5Dataset(torch.utils.data.Dataset):
         if self.reduced_functional:
             sample['Jhat'] = self.build_problem.reduced_functional(sample['output'])
         else:
-            rhs, diag, target = self.build_problem.assembled_problem(sample['output'])
-            sample['rhs'] = rhs
-            sample['diag'] = diag
+            solution_matrix, target = self.build_problem.assemble_problem(sample['output'])
+            sample['solution_matrix'] = solution_matrix
             sample['target'] = target
 
         return sample
