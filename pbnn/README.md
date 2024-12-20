@@ -55,6 +55,45 @@ In the original paper, the PBNN was applied to a biophysics problem. Here, one h
 
 ## The adjoint method
 
+The original PBNN implementation used the `pyadjoint` library to perform PDE-constrained optimization. This leveraged the adjoint method, which is explained briefly here following this [excellent tutorial](https://cs.stanford.edu/~ambrad/adjoint_tutorial.pdf) by Andrew Bradley. 
+
+Suppose we have a set of tunable parameters $f$ and values $u$, which are related by a known function $F(f, u) = 0$. The equation $F(f, u) = 0$ can be solved using a "forward solver" that determines the corresponding values of $u$ for a choice of parameters $f$. Our goal is to optimize an objective $G(u)$. To do this, we would like to differentiate our objective with respect to our tunable parameters, i.e. compute $\nabla_f G$. The **adjoint method** is a technique for doing this. 
+
+First, we expand the gradient $\nabla_f G(u) = G_u \cdot  \nabla_f u$ using the chain rule. Here $G_u$ is the partial derivative of $G$ with respect to the field $u$. The second term $\nabla_f u$, or the derivative of the field $u$ w.r.t. the tunable parameters, comes from the solution of the forward problem $F$. Since $F(f, u) = 0$ everywhere, then $\nabla_f F(f, u) = 0$. Expanding this gives
+
+$$ F_f + F_u \nabla_f u = 0 $$
+
+We can rearrange and write $\nabla_f u = -F_u^{-1} \cdot F_f $ which can be substituted into our expression for $\nabla_f G$
+
+$$ \nabla_f G(u) = -G_u \cdot F_u^{-1} \cdot F_f $$
+
+The first two terms on the right hand side $ -G_u \cdot F_u^{-1}$ is the solution to the linear equation 
+
+$$F_u^T \cdot \lambda + G_u = 0$$
+
+Here the matrix transpose $F_u^T$ is called the adjoint (for real values) and the above equation is referred to as the **adjoint equation**. Solving this equation for the adjoint variables $\lambda = -G_u \cdot F_u^{-1}$ allows us to write
+
+$$ \nabla_f G(u) = \lambda^T \cdot F_f $$
+
+This turns out to be a computationally efficient technique for calculating gradients, because the Jacobian $ F_u$ is typically computed during the solution of the forward problem. 
+For example, solving $F(f, u) = 0$ using Newton's method involves repeated update steps $\Delta u = - F / F_u $. 
+Thus, using the transposed Jacobian to compute $ \nabla_f G(u)$ does not incur a significant additional cost.
+
+An alternative technique for deriving the adjoint method uses Lagrange multipliers. Suppose we have the Lagrangian
+
+$$ \mathcal{L} (f, u, \lambda) = G(u) + \lambda^T F(f, u) $$
+
+Here $G(u)$ is the objective function and $\lambda$ is a vector of Lagrange multipliers enforcing the constraint $F(f, u) = 0$. One can see this by minimizing the Lagrangian by finding stationary points w.r.t. $\lambda$. 
+$$ \nabla_{\lambda} \mathcal{L} = 0 = F(f, u) $$
+
+Solving the first equation implies $\mathcal{L} (f, u, \lambda) = G(u)$, meaning that our target derivative is simply $\nabla_f \mathcal{L} $. We can compute this directly
+$$ \nabla_f \mathcal{L} = G_u \nabla_f u + (\nabla_f \lambda^T) F(f, u) + \lambda^T ( F_u \nabla_f u + F_f ) $$
+Since $F(f, u) = 0$, this simplifies to
+$$ \nabla_f \mathcal{L} = G_u \nabla_f u + \lambda^T ( F_u \nabla_f u + F_f ) $$
+$$ \nabla_f \mathcal{L} = (G_u + \lambda^T F_u) \nabla_f u + \lambda^T F_f $$
+
+The expression within the parentheses is the linear equation for $\lambda$ defined above, i.e. the adjoint equation. When satisfied, the term drops out leaving $\nabla_f \mathcal{L} = \nabla_f G = \lambda^T F_f$ as before. 
+
 ## Converting the original pipeline to `torch`
 
 A major drawback of the original PBNN method was its reliance on the `pyadjoint` and `dolfin-adjoint` libraries which lacked GPU support. As a result, the training loop had to continually move data to the GPU for neural network predictions, to the CPU for the PDE solver and adjoint-based gradient computation, and then back to the GPU to backpropagate gradients to the network weights. This was very slow. 
