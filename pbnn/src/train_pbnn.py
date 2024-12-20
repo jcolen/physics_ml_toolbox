@@ -1,8 +1,10 @@
 import torch
+from torch.nn.utils import clip_grad_norm_
 import numpy as np
 
 from data_processing import HDF5Dataset
 import dolfin_pbnn
+import torch_pbnn
 
 import yaml
 import os
@@ -42,7 +44,7 @@ def get_model(config):
     
     if 'weights' in config and config['weights'] is not None:
         logger.info(f'Loading model weights from {config["weights"]}')
-        info = torch.load(config['weights'])
+        info = torch.load(config['weights'], map_location='cpu')
         model.load_state_dict(info['state_dict'])
 
         logger.info(f'Model reached loss={info["loss"]:.3g} at epoch {info["epoch"]:d}')
@@ -99,34 +101,37 @@ def run_training(config):
 
     for epoch in range(epochs):
         np.random.shuffle(train_idxs)
-        d_ad.set_working_tape(d_ad.Tape())
 
         train_loss = 0.
         t = time()
 
         for i in range(len(train)):
+            d_ad.set_working_tape(d_ad.Tape())
             sample = train[train_idxs[i]]
+            sample['inputs'] = torch.FloatTensor(sample['inputs'])
             sample['inputs'] = sample['inputs'].to(device)
 
             force, loss = model.training_step(sample)
             train_loss += loss / len(train)
             
             if i % batch_size == 0:
+                clip_grad_norm_(model.parameters(), 0.5)
                 optimizer.step()
-                d_ad.set_working_tape(d_ad.Tape())
                 optimizer.zero_grad()
         
         model.eval()
         with torch.no_grad():
             val_loss = 0.
             for i in range(len(val)):
+                d_ad.set_working_tape(d_ad.Tape())
                 sample = val[i]
+                sample['inputs'] = torch.FloatTensor(sample['inputs'])
                 sample['inputs'] = sample['inputs'].to(device)
 
                 force, loss = model.validation_step(sample)
                 val_loss += loss / len(val)
 
-        scheduler.step(val_loss)
+        scheduler.step()
         logger.info(f'Epoch {epoch}\tTrain Loss = {train_loss:.3g}\tVal Loss = {val_loss:.3g}\t{time()-t:.3g} s')
 
         if val_loss < best_loss:

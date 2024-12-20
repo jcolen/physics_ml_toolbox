@@ -1,0 +1,28 @@
+dataset:
+  build_problem: dolfin_problems.BuildElasticityAdhesionProblem
+  mesh: ../data/circle_mesh.xml
+  path: ../data/elasticity_adhesion_dataset.hdf5
+  reduced_functional: true
+model:
+  args:
+    model_kwargs:
+      hidden_dims: 64
+      input_dims: 3
+      num_hidden: 8
+      output_dims: 1
+    model_type: models.LatentNet
+    positive_definite: true
+  class_path: dolfin_pbnn.DolfinPBNN
+  weights: ../models/ElasticityAdhesion/DolfinLatentNet/model_weight.ckpt
+optimizer:
+  args:
+    lr: 0.001
+  class_path: torch.optim.Adam
+save_path: ../models/ElasticityAdhesion/DolfinLatentNet
+scheduler:
+  args:
+    gamma: 0.99
+  class_path: torch.optim.lr_scheduler.ExponentialLR
+training:
+  batch_size: 16
+  epochs: 100

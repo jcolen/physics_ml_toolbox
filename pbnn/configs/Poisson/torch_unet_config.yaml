@@ -1,0 +1,34 @@
+dataset:
+    path: ../data/poisson_dataset.hdf5
+    mesh: ../data/square_mesh.xml
+    build_problem: dolfin_problems.BuildPoissonProblem
+    reduced_functional: False
+
+model:
+    class_path: torch_pbnn.TorchPBNN
+    args:
+        positive_definite: True
+        model_type: models.UNet
+        model_kwargs:
+            input_dims: 3
+            output_dims: 1
+            stage_dims: 16
+            blocks_per_stage: 2
+            num_stages: 3
+            conv_stride: 2
+
+optimizer:
+    class_path: torch.optim.Adam
+    args:
+        lr: 0.001
+
+scheduler:
+    class_path: torch.optim.lr_scheduler.ExponentialLR
+    args:
+        gamma: 0.99
+
+training:
+    epochs: 200
+    batch_size: 16
+
+save_path: ../models/Poisson/TorchUNet
